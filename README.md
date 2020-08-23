@@ -1,2 +1,2 @@
 # BTimer
-高效低GC的Unity计时系统
+高效低GC的Unity/C#计时系统
