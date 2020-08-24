@@ -10,36 +10,40 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public struct TimeTask
+namespace BJTimer
 {
-    public int id;
-    public float delay;
-    public float destTime;
-    public Action callBack;
-    public int count;
+    public struct TimeTask
+    {
+        public int id;
+        public double delay;
+        public double destTime;
+        public Action callBack;
+        public int count;
+    }
+
+    public struct FrameTask
+    {
+        public int id;
+        public int delay;
+        public int destFrame;
+        public Action callBack;
+        public int count;
+    }
+
+    public struct TaskFlag
+    {
+        public int id;
+        public int index;
+        public bool active;
+    }
+
+    public enum TimeUnit
+    {
+        Millisecound,
+        Secound,
+        Minute,
+        Hour,
+        Day
+    }
 }
 
-public struct FrameTask
-{
-    public int id;
-    public int delay;
-    public int destFrame;
-    public Action callBack;
-    public int count;
-}
-
-public struct TaskFlag
-{
-    public int id;
-    public int index;
-    public bool active;
-}
-
-public enum TimeUnit
-{
-    Millisecound,
-    Secound,
-    Minute,
-    Hour,
-    Day
-}

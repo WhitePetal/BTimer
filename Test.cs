@@ -17,14 +17,12 @@ public class Test : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        timeSys = TimerSystem.InitSingleton();
-        timeSys.InitSys();
+        timeSys = TimerSystem.Instance;
+        timeSys.Init();
     }
 
     private void Update()
     {
-        timeSys.Tick();
-
         timer += Time.deltaTime;
         int id = timeSys.AddTimerTask(() => { int a = 500 + 500; }, 500, 5);
         queue.Enqueue(id);
