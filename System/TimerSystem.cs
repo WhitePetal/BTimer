@@ -311,6 +311,8 @@ public class TimerSystem : SystemBase<TimerSystem>
                 frameTaskList[i] = task;
             }
         }
+
+        ++sinceframeCount;
     }
 
     public int AddFrameTask(Action callBack, int delay, int count = 1)
