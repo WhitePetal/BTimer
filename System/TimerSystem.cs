@@ -13,12 +13,18 @@ using UnityEngine;
 
 public class TimerSystem : SystemBase<TimerSystem>
 {
-    private List<TimeTask> tempTimeTaskList = new List<TimeTask>();
-    private List<TimeTask> timeTaskList = new List<TimeTask>();
-    private Dictionary<int, TimeTask> idDic = new Dictionary<int, TimeTask>();
-    private List<int> usedIds = new List<int>();
     private static readonly string obj = "lock";
     private int id;
+    private Dictionary<int, TaskFlag> idDic = new Dictionary<int, TaskFlag>();
+
+    private List<TimeTask> tempTimeTaskList = new List<TimeTask>();
+    private List<TimeTask> timeTaskList = new List<TimeTask>();
+
+
+    private int sinceframeCount;
+    private List<FrameTask> tempFrameTaskList = new List<FrameTask>();
+    private List<FrameTask> frameTaskList = new List<FrameTask>();
+
 
     public override void InitSys()
     {
@@ -27,44 +33,48 @@ public class TimerSystem : SystemBase<TimerSystem>
 
     public void Tick()
     {
-        for(int i = 0; i < tempTimeTaskList.Count; i++)
+        TimeTaskTick();
+        FrameTaskTick();
+    }
+
+    #region TimeTask
+    private void TimeTaskTick()
+    {
+        for (int i = 0; i < tempTimeTaskList.Count; i++)
         {
             AddTimeListItem(tempTimeTaskList[i]);
         }
         tempTimeTaskList.Clear();
 
-        for(int i = 0; i < timeTaskList.Count; i++)
+        for (int i = 0; i < timeTaskList.Count; i++)
         {
             TimeTask task = timeTaskList[i];
             if (Time.realtimeSinceStartup * 1000 < task.destTime) continue;
             else
             {
                 Action cb = task.callBack;
-                if (cb != null) cb.Invoke();
+                try
+                {
+                    if (cb != null) cb.Invoke();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e.ToString());
+                }
             }
 
-            if(task.count == 1)
+            if (task.count == 1)
             {
                 RemoveTimeListItem(task);
             }
             else
             {
-                if(task.count > 0)
+                if (task.count > 0)
                 {
                     --task.count;
                 }
                 task.destTime += task.delay;
                 timeTaskList[i] = task;
-            }
-        }
-
-        for(int i = 0; i < usedIds.Count; i++)
-        {
-            int id = usedIds[i];
-            if (!idDic[id].active)
-            {
-                idDic.Remove(id);
-                RemoveListItem(usedIds, i);
             }
         }
     }
@@ -99,12 +109,15 @@ public class TimerSystem : SystemBase<TimerSystem>
             delay = delay,
             destTime = destTime,
             callBack = callBack,
-            count = count,
-            active = true
+            count = count
+        };
+        TaskFlag flag = new TaskFlag
+        {
+            id = id,
+            active = false
         };
         tempTimeTaskList.Add(task);
-        idDic[id] = task;
-        usedIds.Add(id);
+        idDic[id] = flag;
 
         return id;
     }
@@ -115,7 +128,7 @@ public class TimerSystem : SystemBase<TimerSystem>
         if (idDic.ContainsKey(id) && idDic[id].active)
         {
             exit = true;
-            RemoveTimeListItem(idDic[id]);
+            RemoveTimeListItem(timeTaskList[idDic[id].index]);
         }
 
         if (!exit)
@@ -125,11 +138,8 @@ public class TimerSystem : SystemBase<TimerSystem>
                 if(tempTimeTaskList[i].id == id)
                 {
                     exit = true;
-                    int last = tempTimeTaskList.Count - 1;
-                    TimeTask taks = tempTimeTaskList[i];
-                    tempTimeTaskList[i] = tempTimeTaskList[last];
-                    tempTimeTaskList[last] = taks;
-                    tempTimeTaskList.RemoveAt(last);
+                    RemoveTimeTaskListItem(tempTimeTaskList, i);
+                    idDic.Remove(id);
                     break;
                 }
             }
@@ -161,18 +171,15 @@ public class TimerSystem : SystemBase<TimerSystem>
         TimeTask task = new TimeTask
         {
             id = id,
-            index = idDic[id].index,
             delay = delay,
             destTime = destTime,
             callBack = callBack,
             count = count,
-            active = true
         };
 
         if (idDic.ContainsKey(id) && idDic[id].active)
         {
-            tempTimeTaskList[task.index] = task;
-            idDic[id] = task;
+            timeTaskList[idDic[id].index] = task;
             return true;
         }
         else
@@ -201,13 +208,13 @@ public class TimerSystem : SystemBase<TimerSystem>
             {
                 if (id == int.MaxValue) id = 0;
 
-                if (idDic.ContainsKey(id) && idDic[id].active) id++;
+                if (idDic.ContainsKey(id)) id++;
                 else break;
 
                 len++;
                 if(len == int.MaxValue)
                 {
-                    NETCommon.Log("计时任务已满，无法添加任务", NETLogLevel.Error);
+                    Debug.LogError("计时任务已满，无法添加任务");
                     return -1;
                 }
             }
@@ -217,38 +224,224 @@ public class TimerSystem : SystemBase<TimerSystem>
     }
     private void RemoveTimeListItem(int index)
     {
-        if (timeTaskList.Count == 0) return;
+        if (timeTaskList.Count == 0 && tempTimeTaskList.Count == 0) return;
 
         TimeTask task = timeTaskList[index];
-        task.active = false;
 
-        RemoveListItem(timeTaskList, index);
+        RemoveTimeTaskListItem(timeTaskList, index);
+
         if(index < timeTaskList.Count)
         {
             TimeTask indexTask = timeTaskList[index];
-            indexTask.index = index;
-            timeTaskList[index] = indexTask;
+            TaskFlag flag = new TaskFlag
+            {
+                id = indexTask.id,
+                index = index,
+                active = true
+            };
+            idDic[indexTask.id] = flag;
         }
 
-        idDic[task.id] = task;
+        idDic.Remove(task.id);
     }
     private void RemoveTimeListItem(TimeTask task)
     {
         //Debug.Log(task.index);
-        RemoveTimeListItem(task.index);
+        RemoveTimeListItem(idDic[task.id].index);
     }
     private void AddTimeListItem(TimeTask task)
     {
-        task.index = timeTaskList.Count;
+        TaskFlag flag = new TaskFlag
+        {
+            id = task.id,
+            index = timeTaskList.Count,
+            active = true
+        };
+        idDic[task.id] = flag;
         timeTaskList.Add(task);
     }
 
-    private void RemoveListItem<T>(List<T> list, int index)
+    private void RemoveTimeTaskListItem(List<TimeTask> list, int index)
     {
         int last = list.Count - 1;
-        T temp = list[index];
+        TimeTask temp = list[index];
         list[index] = list[last];
         list[last] = temp;
         list.RemoveAt(last);
     }
+    #endregion
+
+    #region FrameTask
+    private void FrameTaskTick()
+    {
+        for (int i = 0; i < tempFrameTaskList.Count; i++)
+        {
+            AddFrameListItem(tempFrameTaskList[i]);
+        }
+        tempFrameTaskList.Clear();
+
+        for (int i = 0; i < frameTaskList.Count; i++)
+        {
+            FrameTask task = frameTaskList[i];
+            if (sinceframeCount < task.destFrame) continue;
+            else
+            {
+                Action cb = task.callBack;
+                try
+                {
+                    if (cb != null) cb.Invoke();
+                }
+                catch (Exception e)
+                {
+                    Debug.LogError(e.ToString());
+                }
+            }
+
+            if (task.count == 1)
+            {
+                RemoveFrameListItem(task);
+            }
+            else
+            {
+                if (task.count > 0)
+                {
+                    --task.count;
+                }
+                task.destFrame += task.delay;
+                frameTaskList[i] = task;
+            }
+        }
+    }
+
+    public int AddFrameTask(Action callBack, int delay, int count = 1)
+    {
+        int destFrame = sinceframeCount + delay;
+
+        int id = GetId();
+        if (id == -1) return id;
+
+        FrameTask task = new FrameTask
+        {
+            id = id,
+            delay = delay,
+            destFrame = destFrame,
+            callBack = callBack,
+            count = count
+        };
+        TaskFlag flag = new TaskFlag
+        {
+            id = id,
+            active = false
+        };
+        tempFrameTaskList.Add(task);
+        idDic[id] = flag;
+
+        return id;
+    }
+
+    public bool DeleteFrameTask(int id)
+    {
+        bool exit = false;
+        if (idDic.ContainsKey(id) && idDic[id].active)
+        {
+            exit = true;
+            RemoveFrameListItem(idDic[id].index);
+        }
+
+        if (!exit)
+        {
+            for (int i = 0; i < tempFrameTaskList.Count; i++)
+            {
+                if (tempFrameTaskList[i].id == id)
+                {
+                    exit = true;
+                    RemoveFrameTaskListItem(tempFrameTaskList, i);
+                    idDic.Remove(id);
+                    break;
+                }
+            }
+        }
+
+        return exit;
+    }
+
+    public bool ReplaceFrameTask(int id, Action callBack, int delay, int count = 1)
+    {
+        int destFrame = sinceframeCount + delay;
+        FrameTask task = new FrameTask
+        {
+            id = id,
+            delay = delay,
+            destFrame = destFrame,
+            callBack = callBack,
+            count = count
+        };
+
+        if (idDic.ContainsKey(id) && idDic[id].active)
+        {
+            frameTaskList[idDic[id].index] = task;
+            return true;
+        }
+        else
+        {
+            for (int i = 0; i < tempFrameTaskList.Count; i++)
+            {
+                if (tempFrameTaskList[i].id == id)
+                {
+                    tempFrameTaskList[i] = task;
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void RemoveFrameListItem(int index)
+    {
+        if (frameTaskList.Count == 0 && tempFrameTaskList.Count == 0) return;
+
+        FrameTask task = frameTaskList[index];
+
+        RemoveFrameTaskListItem(frameTaskList, index);
+        if (index < frameTaskList.Count)
+        {
+            FrameTask indexTask = frameTaskList[index];
+            TaskFlag flag = new TaskFlag
+            {
+                id = indexTask.id,
+                index = index,
+                active = true
+            };
+            idDic[indexTask.id] = flag;
+        }
+
+        idDic.Remove(task.id);
+    }
+    private void RemoveFrameListItem(FrameTask task)
+    {
+        //Debug.Log(task.index);
+        RemoveTimeListItem(idDic[task.id].index);
+    }
+    private void AddFrameListItem(FrameTask task)
+    {
+        TaskFlag flag = new TaskFlag
+        {
+            id = task.id,
+            index = frameTaskList.Count,
+            active = true
+        };
+        idDic[task.id] = flag;
+        frameTaskList.Add(task);
+    }
+
+    private void RemoveFrameTaskListItem(List<FrameTask> list, int index)
+    {
+        int last = list.Count - 1;
+        FrameTask temp = list[index];
+        list[index] = list[last];
+        list[last] = temp;
+        list.RemoveAt(last);
+    }
+    #endregion
 }
