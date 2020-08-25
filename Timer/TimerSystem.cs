@@ -58,18 +58,23 @@ public class TimerSystem : MonoBehaviour
         timer.Tick();
     }
 
+    public void ResetTimer()
+    {
+        timer.ResetTimer();
+    }
+
     #region TimeTask
-    public int AddTimerTask(Action callBack, double delay, int count = 1, TimeUnit unit = TimeUnit.Millisecound)
+    public IDPack AddTimerTask(Action<int> callBack, double delay, int count = 1, TimeUnit unit = TimeUnit.Millisecound)
     {
         return timer.AddTimerTask(callBack, delay, count, unit);
     }
 
-    public bool DeleteTimeTask(int id)
+    public void DeleteTimeTask(int id)
     {
-        return timer.DeleteTimeTask(id);
+        timer.DeleteTimeTask(id);
     }
 
-    public bool ReplaceTimeTask(int id, Action callBack, double delay, int count = 1, TimeUnit unit = TimeUnit.Millisecound)
+    public bool ReplaceTimeTask(int id, Action<int> callBack, double delay, int count = 1, TimeUnit unit = TimeUnit.Millisecound)
     {
         return timer.ReplaceTimeTask(id, callBack, delay, count, unit);
     }
@@ -77,17 +82,17 @@ public class TimerSystem : MonoBehaviour
     #endregion
 
     #region FrameTask
-    public int AddFrameTask(Action callBack, int delay, int count = 1)
+    public IDPack AddFrameTask(Action<int> callBack, int delay, int count = 1)
     {
         return timer.AddFrameTask(callBack, delay, count);
     }
 
-    public bool DeleteFrameTask(int id)
+    public void DeleteFrameTask(int id)
     {
-        return timer.DeleteFrameTask(id);
+        timer.DeleteFrameTask(id);
     }
 
-    public bool ReplaceFrameTask(int id, Action callBack, int delay, int count = 1)
+    public bool ReplaceFrameTask(int id, Action<int> callBack, int delay, int count = 1)
     {
         return timer.ReplaceFrameTask(id, callBack, delay, count);
     }
