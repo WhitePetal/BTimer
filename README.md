@@ -2,7 +2,8 @@
 高效低GC的Unity/C#计时系统
 * 双端通用: 基于C#实现，可运行在服务器和多线程环境，也可以运行在Unity客户端环境中。
 * 高效低GC: 算法优化较为高效，且之后在计时任务完成销毁时产生一个委托的GC。下图给出了一段示例代码：我们每帧创建一个计时任务，并在一秒后销毁掉一半计时任务，Unity Profiler显示GC为0：
-// 待添加
+![image](https://github.com/WhitePetal/BTimer/blob/master/20200825170919.png)
+![image](https://github.com/WhitePetal/BTimer/blob/master/20200825171100.png)
 * 使用方便: 直接通过提供的 System 单例类，即可使用计时、计时回调、计算日期时间等功能。并且计时功能支持真实时间计时和帧计时。
 
 # 使用示例：
