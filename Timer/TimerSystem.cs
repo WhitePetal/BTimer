@@ -59,6 +59,11 @@ public class TimerSystem : MonoBehaviour
         start = true;
     }
 
+    public void SetLog(BTimer.TaskLog log)
+    {
+        bTimer.SetLog(log);
+    }
+
     private void Update()
     {
         if(start) bTimer.Tick();

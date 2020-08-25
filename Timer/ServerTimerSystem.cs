@@ -70,6 +70,11 @@ public class ServerTimerSystem
         } 
     }
 
+    public void SetLog(BTimer.TaskLog log)
+    {
+        bTimer.SetLog(log);
+    }
+
     public void StartTimer()
     {
         bTimer.StartSeverTimer(interval);
