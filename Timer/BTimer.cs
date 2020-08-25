@@ -18,29 +18,31 @@ namespace BJTimer
         private TaskLog taskLog;
         private Action<Action<int>, int> taskHandle;
 
-        private static readonly string obj = "lock";
+        private static readonly string lockId = "lockId";
         private static readonly string lockTime = "lockTime";
         private static readonly string lockFrame = "lockFrame";
-        private static readonly string lockDelteId = "lockDelteId";
+        //private static readonly string lockDelteId = "lockDelteId";
 
         private int id;
         private Dictionary<int, TaskFlag> idDic = new Dictionary<int, TaskFlag>();
-        private List<int> deleteIds = new List<int>();
+        private List<int> delIds = new List<int>();
 
         private DateTime startDateTime = new DateTime(1970, 1, 1, 0, 0, 0);
         private double nowTime;
 
         private List<TimeTask> tempTimeTaskList = new List<TimeTask>();
         private List<TimeTask> timeTaskList = new List<TimeTask>();
+        private List<int> tempDelTimeList = new List<int>();
 
 
         private int sinceframeCount;
         private List<FrameTask> tempFrameTaskList = new List<FrameTask>();
         private List<FrameTask> frameTaskList = new List<FrameTask>();
+        private List<int> tempDelFrameList = new List<int>();
 
         public void ResetTimer()
         {
-            serTime.Stop();
+            if(serTime != null) serTime.Stop();
             idDic.Clear();
             tempTimeTaskList.Clear();
             timeTaskList.Clear();
@@ -51,7 +53,7 @@ namespace BJTimer
 
         public void StartSeverTimer(int interval)
         {
-            if (interval != 0)
+            if (interval != 0 && taskHandle != null)
             {
                 if (serTime != null) serTime.Dispose();
 
@@ -70,26 +72,9 @@ namespace BJTimer
             TimeTaskTick();
             FrameTaskTick();
 
-            if (deleteIds.Count > 0)
-            {
-                lock (lockDelteId)
-                {
-                    for (int i = 0; i < deleteIds.Count; i++)
-                    {
-                        switch (idDic[deleteIds[i]].type)
-                        {
-                            case TaskType.TimeTask:
-                                DealDeleteTimeTask(deleteIds[i]);
-                                break;
-                            case TaskType.FrameTask:
-                                DealDeleteFrameTask(deleteIds[i]);
-                                break;
-                        }
-                        
-                    }
-                    deleteIds.Clear();
-                }
-            }
+            RecDelTimeTask();
+            RecDelFrameTask();
+            RecDelId();
         }
 
         public void SetLog(TaskLog log)
@@ -179,8 +164,8 @@ namespace BJTimer
 
                 if (task.count == 1)
                 {
-                    //RemoveTimeListItem(task);
-                    deleteIds.Add(task.id);
+                    RemoveTimeListItem(i);
+                    ///*lock (lockTime) */deleteIds.Add(task.id);
                 }
                 else
                 {
@@ -238,31 +223,30 @@ namespace BJTimer
 
         public void DeleteTimeTask(int id)
         {
-            lock (lockDelteId) deleteIds.Add(id);
+            lock (lockTime) tempDelTimeList.Add(id);
         }
 
         private bool DealDeleteTimeTask(int id)
         {
             bool exit = false;
-            lock (lockTime)
-            {
-                if (idDic.ContainsKey(id) && idDic[id].active)
-                {
-                    exit = true;
-                    RemoveTimeListItem(timeTaskList[idDic[id].index]);
-                }
 
-                if (!exit)
+            if (idDic.ContainsKey(id) && idDic[id].active)
+            {
+                exit = true;
+                RemoveTimeListItem(idDic[id].index);
+            }
+
+            if (!exit)
+            {
+                for (int i = 0; i < tempTimeTaskList.Count; i++)
                 {
-                    for (int i = 0; i < tempTimeTaskList.Count; i++)
+                    if (tempTimeTaskList[i].id == id)
                     {
-                        if (tempTimeTaskList[i].id == id)
-                        {
-                            exit = true;
-                            RemoveTimeTaskListItem(tempTimeTaskList, i);
-                            /*lock (obj)*/ idDic.Remove(id);
-                            break;
-                        }
+                        exit = true;
+                        RemoveListItem_TimeTask(tempTimeTaskList, i);
+                        delIds.Add(id);
+                        //lock(lockTime) idDic.Remove(id);
+                        break;
                     }
                 }
             }
@@ -326,7 +310,7 @@ namespace BJTimer
 
             TimeTask task = timeTaskList[index];
 
-            RemoveTimeTaskListItem(timeTaskList, index);
+            RemoveListItem_TimeTask(timeTaskList, index);
 
             if (index < timeTaskList.Count)
             {
@@ -340,12 +324,8 @@ namespace BJTimer
                 idDic[indexTask.id] = flag;
             }
 
-            /*lock(obj)*/ idDic.Remove(task.id);
-        }
-        private void RemoveTimeListItem(TimeTask task)
-        {
-            //Debug.Log(task.index);
-            RemoveTimeListItem(idDic[task.id].index);
+            delIds.Add(task.id);
+            //lock(lockId) idDic.Remove(task.id);
         }
         private void AddTimeListItem(TimeTask task)
         {
@@ -358,14 +338,28 @@ namespace BJTimer
             idDic[task.id] = flag;
             timeTaskList.Add(task);
         }
-
-        private void RemoveTimeTaskListItem(List<TimeTask> list, int index)
+        private void RemoveListItem_TimeTask(List<TimeTask> list, int index)
         {
             int last = list.Count - 1;
             TimeTask temp = list[index];
             list[index] = list[last];
             list[last] = temp;
             list.RemoveAt(last);
+        }
+        private void RecDelTimeTask()
+        {
+            if (tempDelTimeList.Count > 0)
+            {
+                lock (lockTime)
+                {
+                    for (int i = 0; i < tempDelTimeList.Count; i++)
+                    {
+                        DealDeleteTimeTask(tempDelTimeList[i]);
+                    }
+
+                    tempDelTimeList.Clear();
+                }
+            }
         }
         #endregion
 
@@ -405,8 +399,8 @@ namespace BJTimer
 
                 if (task.count == 1)
                 {
-                    //RemoveFrameListItem(task);
-                    deleteIds.Add(task.id);
+                    RemoveFrameListItem(i);
+                    //deleteIds.Add(task.id);
                 }
                 else
                 {
@@ -420,18 +414,6 @@ namespace BJTimer
             }
 
             ++sinceframeCount;
-
-            if (deleteIds.Count > 0)
-            {
-                lock (lockFrame)
-                {
-                    for (int i = 0; i < deleteIds.Count; i++)
-                    {
-                        DealDeleteFrameTask(deleteIds[i]);
-                    }
-                    deleteIds.Clear();
-                }
-            }
         }
 
         public IDPack AddFrameTask(Action<int> callBack, int delay, int count = 1)
@@ -460,35 +442,32 @@ namespace BJTimer
 
         public void DeleteFrameTask(int id)
         {
-            lock (lockDelteId) deleteIds.Add(id);
+            lock (lockFrame) tempDelFrameList.Add(id);
         }
         
         private bool DealDeleteFrameTask(int id)
         {
             bool exit = false;
-            lock (lockFrame)
+            if (idDic.ContainsKey(id) && idDic[id].active)
             {
-                if (idDic.ContainsKey(id) && idDic[id].active)
-                {
-                    exit = true;
-                    RemoveFrameListItem(idDic[id].index);
-                }
+                exit = true;
+                RemoveFrameListItem(idDic[id].index);
+            }
 
-                if (!exit)
+            if (!exit)
+            {
+                for (int i = 0; i < tempFrameTaskList.Count; i++)
                 {
-                    for (int i = 0; i < tempFrameTaskList.Count; i++)
+                    if (tempFrameTaskList[i].id == id)
                     {
-                        if (tempFrameTaskList[i].id == id)
-                        {
-                            exit = true;
-                            RemoveFrameTaskListItem(tempFrameTaskList, i);
-                            /*lock(obj)*/ idDic.Remove(id);
-                            break;
-                        }
+                        exit = true;
+                        RemoveListItem_FrameTask(tempFrameTaskList, i);
+                        delIds.Add(id);
+                        ///*lock (obj)*/ idDic.Remove(id);
+                        break;
                     }
                 }
             }
-
 
             return exit;
         }
@@ -531,7 +510,7 @@ namespace BJTimer
 
             FrameTask task = frameTaskList[index];
 
-            RemoveFrameTaskListItem(frameTaskList, index);
+            RemoveListItem_FrameTask(frameTaskList, index);
             if (index < frameTaskList.Count)
             {
                 FrameTask indexTask = frameTaskList[index];
@@ -544,12 +523,8 @@ namespace BJTimer
                 idDic[indexTask.id] = flag;
             }
 
-            idDic.Remove(task.id);
-        }
-        private void RemoveFrameListItem(FrameTask task)
-        {
-            //Debug.Log(task.index);
-            RemoveTimeListItem(idDic[task.id].index);
+            delIds.Add(task.id);
+            //idDic.Remove(task.id);
         }
         private void AddFrameListItem(FrameTask task)
         {
@@ -562,8 +537,7 @@ namespace BJTimer
             idDic[task.id] = flag;
             frameTaskList.Add(task);
         }
-
-        private void RemoveFrameTaskListItem(List<FrameTask> list, int index)
+        private void RemoveListItem_FrameTask(List<FrameTask> list, int index)
         {
             int last = list.Count - 1;
             FrameTask temp = list[index];
@@ -571,12 +545,26 @@ namespace BJTimer
             list[last] = temp;
             list.RemoveAt(last);
         }
+        private void RecDelFrameTask()
+        {
+            if (tempDelFrameList.Count > 0)
+            {
+                lock (lockFrame)
+                {
+                    for (int i = 0; i < tempDelFrameList.Count; i++)
+                    {
+                        DealDeleteFrameTask(tempDelFrameList[i]);
+                    }
+                    tempDelFrameList.Clear();
+                }
+            }
+        }
         #endregion
 
         #region Common
         private int GetId()
         {
-            lock (obj)
+            lock (lockId)
             {
                 id += 1;
 
@@ -601,10 +589,23 @@ namespace BJTimer
                     id = id,
                     active = false
                 };
-                idDic[id] = flag;
+                idDic.Add(id, flag);
             }
 
             return id;
+        }
+        private void RecDelId()
+        {
+            if (delIds.Count > 0)
+            {
+                lock (lockId)
+                {
+                    for (int i = 0; i < delIds.Count; i++)
+                    {
+                        idDic.Remove(delIds[i]);
+                    }
+                }
+            }
         }
 
         private double GetUTCMilliseconds()

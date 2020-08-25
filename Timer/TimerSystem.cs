@@ -28,12 +28,13 @@ public class TimerSystem : MonoBehaviour
         }
     }
 
-    private BTimer timer;
+    private BTimer bTimer;
+    private bool start = false;
 
     public void Init()
     {
-        timer = new BTimer();
-        timer.SetLog((str, level) =>
+        bTimer = new BTimer();
+        bTimer.SetLog((str, level) =>
         {
             switch (level)
             {
@@ -53,30 +54,35 @@ public class TimerSystem : MonoBehaviour
         });
     }
 
+    public void StartTimer()
+    {
+        start = true;
+    }
+
     private void Update()
     {
-        timer.Tick();
+        if(start) bTimer.Tick();
     }
 
     public void ResetTimer()
     {
-        timer.ResetTimer();
+        bTimer.ResetTimer();
     }
 
     #region TimeTask
     public IDPack AddTimerTask(Action<int> callBack, double delay, int count = 1, TimeUnit unit = TimeUnit.Millisecound)
     {
-        return timer.AddTimerTask(callBack, delay, count, unit);
+        return bTimer.AddTimerTask(callBack, delay, count, unit);
     }
 
     public void DeleteTimeTask(int id)
     {
-        timer.DeleteTimeTask(id);
+        bTimer.DeleteTimeTask(id);
     }
 
     public bool ReplaceTimeTask(int id, Action<int> callBack, double delay, int count = 1, TimeUnit unit = TimeUnit.Millisecound)
     {
-        return timer.ReplaceTimeTask(id, callBack, delay, count, unit);
+        return bTimer.ReplaceTimeTask(id, callBack, delay, count, unit);
     }
 
     #endregion
@@ -84,17 +90,51 @@ public class TimerSystem : MonoBehaviour
     #region FrameTask
     public IDPack AddFrameTask(Action<int> callBack, int delay, int count = 1)
     {
-        return timer.AddFrameTask(callBack, delay, count);
+        return bTimer.AddFrameTask(callBack, delay, count);
     }
 
     public void DeleteFrameTask(int id)
     {
-        timer.DeleteFrameTask(id);
+        bTimer.DeleteFrameTask(id);
     }
 
     public bool ReplaceFrameTask(int id, Action<int> callBack, int delay, int count = 1)
     {
-        return timer.ReplaceFrameTask(id, callBack, delay, count);
+        return bTimer.ReplaceFrameTask(id, callBack, delay, count);
+    }
+    #endregion
+
+    #region Tools
+    public double GetMillisecondsTime()
+    {
+        return bTimer.GetMillisecondsTime();
+    }
+
+    public DateTime GetLocalDateTime()
+    {
+        return bTimer.GetLocalDateTime();
+    }
+
+    public int GetYear()
+    {
+        return bTimer.GetYear();
+    }
+    public int GetMonth()
+    {
+        return bTimer.GetMonth();
+    }
+    public int GetDay()
+    {
+        return bTimer.GetDay();
+    }
+    public int GetWeek()
+    {
+        return bTimer.GetWeek();
+    }
+
+    public string GetLocalTimeStr()
+    {
+        return bTimer.GetLocalTimeStr();
     }
     #endregion
 }

@@ -22,13 +22,16 @@ public class ServerTimerSystem
         }
     }
 
-    private static readonly string obj = "lock";
+    private static readonly string obj = "lockTaskQueue";
 
     private BTimer bTimer;
     private Queue<TaskPack> taskPackQue = new Queue<TaskPack>();
 
-    public void Init(int interval)
+    private int interval;
+
+    public void Init(int interval, bool dealInMain = true)
     {
+        this.interval = interval;
         bTimer = new BTimer();
         bTimer.SetLog((str, level) =>
         {
@@ -52,18 +55,47 @@ public class ServerTimerSystem
         // 设置主线程处理句柄，如果调用了该方法
         // 则必须在主线程循环调用 DealTimeTask() 来在主线程处理计时任务回调
         // 如果不调用该方法，则计时任务回调是在多线程中执行
-        bTimer.SetHandle((cb, id) =>
+        if (dealInMain)
         {
-            if (cb != null)
+            bTimer.SetHandle((cb, id) =>
             {
-                lock (obj)
+                if (cb != null)
                 {
-                    taskPackQue.Enqueue(new TaskPack(id, cb));
+                    lock (obj)
+                    {
+                        taskPackQue.Enqueue(new TaskPack(id, cb));
+                    }
                 }
-            }
-        }); 
+            });
+        } 
+    }
 
+    public void StartTimer()
+    {
         bTimer.StartSeverTimer(interval);
+    }
+
+    public void Tick()
+    {
+        bTimer.Tick();
+    }
+
+    public void DealTask()
+    {
+        while (taskPackQue.Count > 0)
+        {
+            TaskPack tp;
+            lock (obj)
+            {
+                tp = taskPackQue.Dequeue();
+            }
+            tp.callBack.Invoke(tp.id);
+        }
+    }
+
+    public void ResetTimer()
+    {
+        bTimer.ResetTimer();
     }
 
     #region TimeTask
@@ -99,23 +131,39 @@ public class ServerTimerSystem
     {
         return bTimer.ReplaceFrameTask(id, callBack, delay, count);
     }
-    #endregion 
+    #endregion
 
-    public void DealTimeTask()
+    #region Tools
+    public double GetMillisecondsTime()
     {
-        while(taskPackQue.Count > 0)
-        {
-            TaskPack tp;
-            lock (obj)
-            {
-                tp = taskPackQue.Dequeue();
-            }
-            tp.callBack.Invoke(tp.id);
-        }
+        return bTimer.GetMillisecondsTime();
     }
 
-    public void ResetTimer()
+    public DateTime GetLocalDateTime()
     {
-        bTimer.ResetTimer();
+        return bTimer.GetLocalDateTime();
     }
+
+    public int GetYear()
+    {
+        return bTimer.GetYear();
+    }
+    public int GetMonth()
+    {
+        return bTimer.GetMonth();
+    }
+    public int GetDay()
+    {
+        return bTimer.GetDay();
+    }
+    public int GetWeek()
+    {
+        return bTimer.GetWeek();
+    }
+
+    public string GetLocalTimeStr()
+    {
+        return bTimer.GetLocalTimeStr();
+    }
+    #endregion
 }
