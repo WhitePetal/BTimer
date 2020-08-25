@@ -10,7 +10,7 @@
 首先通过 TimerSystem.Instance 获取单例引用，之后通过 Init 对计时系统进行初始化，然后 StartTimer 即可启动计时系统：
 <details>
 <summary>代码示例</summary>
-```
+```java
     void Start()
     {
         timeSys = TimerSystem.Instance;
@@ -23,7 +23,7 @@
   之后可以通过 TimerSystem 的 Add、Delete、Replace 来 添加、删除、替换 时间计时或帧计时任务：
 <details>
 <summary>代码示例</summary>
-```
+```java
     private void Update()
     {
         timer += Time.deltaTime;
@@ -50,7 +50,7 @@
   服务端计时系统的启动与客户端大体相同，区别在于 服务端计时系统的 Init 函数有两个参数，第一个参数表示计时系统的帧率，即多少毫秒为一帧； 另一个是默认值为 true 的布尔参数——dealInMain，该参数默认或者传入true表示计时任务的回调函数即具体任务是在主线程中进行的，多线程中只负责进行计时部分。而传入false则表示计时部分和任务执行部分都将在多线程中进行：
 <details>
 <summary>代码示例</summary>
-```
+```java
         static void Main(string[] args)
         {
             timerSystem = ServerTimerSystem.Instance;
@@ -62,7 +62,7 @@
   需要注意的是，如果我们 Init 中传入的 dealInMain 为 true，则我们需要自行在主线程中的合适位置对计时器进行驱动(调用 DealTask 方法)：
 <details>
 <summary>代码示例</summary>
-```
+```java
         static void Main(string[] args)
         {
             timerSystem = ServerTimerSystem.Instance;
@@ -77,7 +77,7 @@
   之后其它的操作与客户端完全相同：
 <details>
 <summary>代码示例</summary>
-```
+```java
         static void Main(string[] args)
         {
             timerSystem = ServerTimerSystem.Instance;
@@ -129,7 +129,7 @@
   SetLog 方法需要传入一个自定义的委托，该委托接收两个参数：输出日志的字符串信息 和 输出日志的安全等级，示例：
 <details>
 <summary>代码示例</summary>
-```
+```java
     void Start()
     {
         timeSys = TimerSystem.Instance;
